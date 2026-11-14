@@ -13,7 +13,8 @@ jobs:
     - name: Setup Environment
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32z1-dev libelf-dev libncurses-dev libsdl1.2-dev libssl-dev libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 wget zstd
+        # Menambahkan gcc-aarch64-linux-gnu dan gcc-arm-linux-gnueabi
+        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32z1-dev libelf-dev libncurses-dev libsdl1.2-dev libssl-dev libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 wget zstd gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
     - name: Download Toolchain (Neutron Clang)
       run: |
@@ -28,12 +29,11 @@ jobs:
         export SUBARCH=arm64
         export PATH="$PWD/clang/bin:$PATH"
         
-        # Perintah config
         make O=out ARCH=arm64 vendor/xiaomi/miatoll_defconfig
         
         ./scripts/config --file out/.config -e CONFIG_BPF_SYSCALL -e CONFIG_BPF_JIT -e CONFIG_CGROUP_BPF || true
         
-        # Perintah build: Menambahkan LD=ld.lld agar tidak mencari gold
+        # Memastikan menggunakan GCC untuk cross-compile
         make -j2 O=out ARCH=arm64 CC=clang \
           LD=ld.lld \
           LLVM=1 LLVM_IAS=1 \
