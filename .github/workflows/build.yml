@@ -1,4 +1,4 @@
-name: Build Kinesis Extreme (v2 - Flashable)
+name: Build Kinesis Extreme (BPF Backport Attempt)
 
 on:
   workflow_dispatch:
@@ -31,18 +31,25 @@ jobs:
         
         make O=out ARCH=arm64 vendor/xiaomi/miatoll_defconfig
         
-        # Aktifkan fitur Extreme & BPF
+        # 1. Matikan fitur yang bikin error Clang
+        ./scripts/config --file out/.config -d CONFIG_SHADOW_CALL_STACK
+        
+        # 2. "Bumbu" BPF ala Saamrox (Memaksa fitur BPF aktif)
         ./scripts/config --file out/.config \
-          -d CONFIG_SHADOW_CALL_STACK \
           -e CONFIG_BPF_SYSCALL \
           -e CONFIG_BPF_JIT \
           -e CONFIG_CGROUP_BPF \
+          -e CONFIG_NET_CLS_BPF \
+          -e CONFIG_NET_ACT_BPF
+        
+        # 3. Aktifkan fitur Extreme (Kalau ada di source code Clarencelol)
+        ./scripts/config --file out/.config \
           -e CONFIG_ADRENO_IDLER \
           -e CONFIG_GPU_BOOST || true
         
         make O=out ARCH=arm64 olddefconfig
         
-        # Trik build: Paksa menghasilkan Image.gz
+        # 4. Trik Build: Paksa menghasilkan Image.gz dan pakai LLVM
         make -j2 O=out ARCH=arm64 CC=clang \
           CLANG_TRIPLE=aarch64-linux-gnu- \
           LD=ld.lld \
@@ -56,29 +63,18 @@ jobs:
           CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
           KERNEL_IMAGE_NAME=Image.gz
 
-    - name: Package Kernel (AnyKernel3 Miatoll)
+    - name: Package Kernel (AnyKernel3)
       run: |
-        # Ambil AnyKernel3 yang sudah dikonfigurasi untuk Miatoll (punya Saamrox)
-        git clone --depth=1 https://github.com/saamrox/AnyKernel3 -b miatoll AnyKernel3
-        
-        # Bersihkan isi lama, masukkan kernel baru
-        rm -f AnyKernel3/Image.gz AnyKernel3/dtbo.img
-        
-        if [ -f out/arch/arm64/boot/Image.gz ]; then
-          cp out/arch/arm64/boot/Image.gz AnyKernel3/
-        else
-          # Kalau ternyata masih Image mentah, kompres manual
-          gzip -c out/arch/arm64/boot/Image > AnyKernel3/Image.gz
-        fi
-        
-        # Opsional: Ambil dtbo.img dari ROM kamu (kamu harus upload ke repo atau pakai link)
-        # Untuk sekarang, kita biarkan script AnyKernel3 menanganinya.
-        
+        git clone --depth=1 https://github.com/osm0sis/AnyKernel3 -b master AnyKernel3
+        # Kita cuma copy Image.gz, karena script AnyKernel3 butuh itu
+        cp out/arch/arm64/boot/Image.gz AnyKernel3/
         cd AnyKernel3
-        zip -r9 Kinesis-Extreme-Flashable.zip *
+        # Kita gunakan script AnyKernel3 yang sudah kita edit sebelumnya (yang ada miatoll-nya)
+        # Atau kalau kamu punya zip Saamrox, kamu bisa ambil anykernel.sh-nya
+        zip -r9 Kinesis-Extreme-BPF.zip *
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Kinesis-Extreme-Zip
-        path: AnyKernel3/Kinesis-Extreme-Flashable.zip
+        name: Kinesis-Extreme-BPF
+        path: AnyKernel3/Kinesis-Extreme-BPF.zip
