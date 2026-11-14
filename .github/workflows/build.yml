@@ -1,0 +1,56 @@
+name: Build Kinesis Kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Kernel Source
+      uses: actions/checkout@v4
+      
+    - name: Setup Environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32z1-dev libelf-dev liblz4-tool libncurses-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3
+
+    - name: Download Toolchain (Clang 19)
+      run: |
+        wget https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.0/clang+llvm-19.1.0-x86_64-linux-gnu-ubuntu-22.04.tar.xz
+        tar -xf clang+llvm-19.1.0-x86_64-linux-gnu-ubuntu-22.04.tar.xz
+        mv clang+llvm-19.1.0-x86_64-linux-gnu-ubuntu-22.04 clang
+
+    - name: Build Kernel
+      run: |
+        export ARCH=arm64
+        export SUBARCH=arm64
+        export PATH="$PWD/clang/bin:$PATH"
+        
+        make O=out ARCH=arm64 vendor/miatoll_defconfig
+        
+        ./scripts/config --file out/.config -e CONFIG_BPF_SYSCALL -e CONFIG_BPF_JIT -e CONFIG_CGROUP_BPF || true
+        
+        make -j2 O=out ARCH=arm64 CC=clang \
+          LLVM=1 LLVM_IAS=1 \
+          CROSS_COMPILE=aarch64-linux-gnu- \
+          CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+
+    - name: Package Kernel (AnyKernel3)
+      run: |
+        git clone --depth=1 https://github.com/osm0sis/AnyKernel3 -b master AnyKernel3
+        
+        if [ -f out/arch/arm64/boot/Image.gz-dtb ]; then
+          cp out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
+        else
+          cp out/arch/arm64/boot/Image AnyKernel3/
+        fi
+        
+        cd AnyKernel3
+        zip -r9 Kinesis-Android17-Build.zip *
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Kinesis-Kernel-Zip
+        path: AnyKernel3/Kinesis-Android17-Build.zip
