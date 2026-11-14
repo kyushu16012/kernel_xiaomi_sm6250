@@ -1,4 +1,4 @@
-name: Build Kinesis Extreme (Image.gz)
+name: Build Kinesis Extreme (Clang 22)
 
 on:
   workflow_dispatch:
@@ -16,12 +16,13 @@ jobs:
         sudo apt-get install -y bc bison build-essential ccache curl flex git gnupg gperf imagemagick lib32z1-dev libelf-dev libncurses-dev libsdl1.2-dev libssl-dev libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 wget zstd
         sudo apt-get install -y gcc-arm-linux-gnueabi || true
 
-    - name: Download Toolchain (Neutron Clang)
+    - name: Download Toolchain (Clang 22 - RedHat)
       run: |
-        wget https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/06092026/neutron-clang-06092026.tar.zst -O neutron-clang.tar.zst
+        # Menggunakan Clang 22 dari rilis RedHat (lebih stabil dari Google Source)
+        wget https://github.com/sbwml/redhat-llvm-project/releases/download/clang-22.0.2/clang-22.0.2-x86_64-redhat-linux.tar.xz -O clang-22.tar.xz
         mkdir -p clang
-        tar -xf neutron-clang.tar.zst -C clang
-        rm neutron-clang.tar.zst
+        tar -xf clang-22.tar.xz -C clang --strip-components=1
+        rm clang-22.tar.xz
 
     - name: Build Kernel
       run: |
@@ -44,7 +45,7 @@ jobs:
         
         make O=out ARCH=arm64 olddefconfig
         
-        # Build dan PASTIKAN menghasilkan Image.gz
+        # Build pakai Clang 22
         make -j2 O=out ARCH=arm64 CC=clang \
           CLANG_TRIPLE=aarch64-linux-gnu- \
           LD=ld.lld \
@@ -61,6 +62,5 @@ jobs:
     - name: Upload Artifact (Image.gz)
       uses: actions/upload-artifact@v4
       with:
-        name: Kinesis-Image-gz
-        # Kita HANYA mengambil file Image.gz-nya saja, bukan zip AnyKernel3
+        name: Kinesis-Image-gz-Clang22
         path: out/arch/arm64/boot/Image.gz
