@@ -13,11 +13,10 @@ jobs:
     - name: Setup Environment
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32z1-dev libelf-dev libncurses-dev libsdl1.2-dev libssl-dev libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 wget
+        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32z1-dev libelf-dev libncurses-dev libsdl1.2-dev libssl-dev libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 wget zstd
 
     - name: Download Toolchain (Neutron Clang)
       run: |
-        # Menggunakan Neutron Clang yang lebih stabil dan ramah untuk kernel Android
         wget https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/06092026/neutron-clang-06092026.tar.zst -O neutron-clang.tar.zst
         mkdir -p clang
         tar -xf neutron-clang.tar.zst -C clang
@@ -29,6 +28,7 @@ jobs:
         export SUBARCH=arm64
         export PATH="$PWD/clang/bin:$PATH"
         
+        # Perintah ini sudah disesuaikan dengan posisi file yang ada di folder 'vendor'
         make O=out ARCH=arm64 vendor/miatoll_defconfig
         
         ./scripts/config --file out/.config -e CONFIG_BPF_SYSCALL -e CONFIG_BPF_JIT -e CONFIG_CGROUP_BPF || true
