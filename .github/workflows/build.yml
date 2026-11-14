@@ -1,4 +1,4 @@
-name: Build Kinesis Extreme (BPF Backport Attempt)
+name: Build Kinesis Extreme (Image.gz)
 
 on:
   workflow_dispatch:
@@ -31,25 +31,20 @@ jobs:
         
         make O=out ARCH=arm64 vendor/xiaomi/miatoll_defconfig
         
-        # 1. Matikan fitur yang bikin error Clang
+        # Trik agar tidak error Clang
         ./scripts/config --file out/.config -d CONFIG_SHADOW_CALL_STACK
         
-        # 2. "Bumbu" BPF ala Saamrox (Memaksa fitur BPF aktif)
+        # Bumbu Extreme & BPF
         ./scripts/config --file out/.config \
           -e CONFIG_BPF_SYSCALL \
           -e CONFIG_BPF_JIT \
           -e CONFIG_CGROUP_BPF \
-          -e CONFIG_NET_CLS_BPF \
-          -e CONFIG_NET_ACT_BPF
-        
-        # 3. Aktifkan fitur Extreme (Kalau ada di source code Clarencelol)
-        ./scripts/config --file out/.config \
           -e CONFIG_ADRENO_IDLER \
           -e CONFIG_GPU_BOOST || true
         
         make O=out ARCH=arm64 olddefconfig
         
-        # 4. Trik Build: Paksa menghasilkan Image.gz dan pakai LLVM
+        # Build dan PASTIKAN menghasilkan Image.gz
         make -j2 O=out ARCH=arm64 CC=clang \
           CLANG_TRIPLE=aarch64-linux-gnu- \
           LD=ld.lld \
@@ -63,18 +58,9 @@ jobs:
           CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
           KERNEL_IMAGE_NAME=Image.gz
 
-    - name: Package Kernel (AnyKernel3)
-      run: |
-        git clone --depth=1 https://github.com/osm0sis/AnyKernel3 -b master AnyKernel3
-        # Kita cuma copy Image.gz, karena script AnyKernel3 butuh itu
-        cp out/arch/arm64/boot/Image.gz AnyKernel3/
-        cd AnyKernel3
-        # Kita gunakan script AnyKernel3 yang sudah kita edit sebelumnya (yang ada miatoll-nya)
-        # Atau kalau kamu punya zip Saamrox, kamu bisa ambil anykernel.sh-nya
-        zip -r9 Kinesis-Extreme-BPF.zip *
-
-    - name: Upload Artifact
+    - name: Upload Artifact (Image.gz)
       uses: actions/upload-artifact@v4
       with:
-        name: Kinesis-Extreme-BPF
-        path: AnyKernel3/Kinesis-Extreme-BPF.zip
+        name: Kinesis-Image-gz
+        # Kita HANYA mengambil file Image.gz-nya saja, bukan zip AnyKernel3
+        path: out/arch/arm64/boot/Image.gz
