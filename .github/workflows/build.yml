@@ -28,8 +28,8 @@ jobs:
         export SUBARCH=arm64
         export PATH="$PWD/clang/bin:$PATH"
         
-        # Perintah ini sudah disesuaikan dengan posisi file yang ada di folder 'vendor'
-        make O=out ARCH=arm64 vendor/miatoll_defconfig
+        # Perintah yang sudah pasti benar (menambahkan folder xiaomi)
+        make O=out ARCH=arm64 vendor/xiaomi/miatoll_defconfig
         
         ./scripts/config --file out/.config -e CONFIG_BPF_SYSCALL -e CONFIG_BPF_JIT -e CONFIG_CGROUP_BPF || true
         
