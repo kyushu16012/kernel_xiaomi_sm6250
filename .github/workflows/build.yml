@@ -28,12 +28,14 @@ jobs:
         export SUBARCH=arm64
         export PATH="$PWD/clang/bin:$PATH"
         
-        # Perintah yang sudah pasti benar (menambahkan folder xiaomi)
+        # Perintah config
         make O=out ARCH=arm64 vendor/xiaomi/miatoll_defconfig
         
         ./scripts/config --file out/.config -e CONFIG_BPF_SYSCALL -e CONFIG_BPF_JIT -e CONFIG_CGROUP_BPF || true
         
+        # Perintah build: Menambahkan LD=ld.lld agar tidak mencari gold
         make -j2 O=out ARCH=arm64 CC=clang \
+          LD=ld.lld \
           LLVM=1 LLVM_IAS=1 \
           CROSS_COMPILE=aarch64-linux-gnu- \
           CROSS_COMPILE_ARM32=arm-linux-gnueabi-
