@@ -28,22 +28,19 @@ jobs:
         export SUBARCH=arm64
         export PATH="$PWD/clang/bin:$PATH"
         
-        # 1. Muat konfigurasi dasar
         make O=out ARCH=arm64 vendor/xiaomi/miatoll_defconfig
         
-        # 2. Trik utama: Matikan Shadow Call Stack & aktifkan BPF
-        # Ini akan menimpa konfigurasi default yang mencoba mengaktifkan fitur tersebut
         ./scripts/config --file out/.config \
           -d CONFIG_SHADOW_CALL_STACK \
           -e CONFIG_BPF_SYSCALL \
           -e CONFIG_BPF_JIT \
           -e CONFIG_CGROUP_BPF
         
-        # 3. Pastikan file .config diperbarui (wajib setelah mengubah config)
         make O=out ARCH=arm64 olddefconfig
         
-        # 4. Kompilasi
+        # Perbaikan: Tentukan target triple secara eksplisit
         make -j2 O=out ARCH=arm64 CC=clang \
+          CLANG_TRIPLE=aarch64-linux-gnu- \
           LD=ld.lld \
           AR=llvm-ar \
           NM=llvm-nm \
@@ -51,8 +48,8 @@ jobs:
           OBJDUMP=llvm-objdump \
           STRIP=llvm-strip \
           LLVM=1 LLVM_IAS=1 \
-          CROSS_COMPILE="$PWD/clang/bin/llvm-" \
-          CROSS_COMPILE_ARM32="$PWD/clang/bin/llvm-"
+          CROSS_COMPILE=aarch64-linux-gnu- \
+          CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
     - name: Package Kernel (AnyKernel3)
       run: |
