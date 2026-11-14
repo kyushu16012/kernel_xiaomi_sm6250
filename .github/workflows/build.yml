@@ -1,4 +1,4 @@
-name: Build Kinesis Extreme (Clang 22 Final)
+name: Build Kinesis Extreme (Final)
 
 on:
   workflow_dispatch:
@@ -16,13 +16,13 @@ jobs:
         sudo apt-get install -y bc bison build-essential ccache curl flex git gnupg gperf imagemagick lib32z1-dev libelf-dev libncurses-dev libsdl1.2-dev libssl-dev libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 wget zstd
         sudo apt-get install -y gcc-arm-linux-gnueabi || true
 
-    - name: Download Toolchain (Clang 22 - RedHat)
+    - name: Download Toolchain (Neutron Clang 21)
       run: |
-        # Link RedHat yang sudah diperbaiki
-        wget https://github.com/sbwml/redhat-llvm-project/releases/download/clang-22.0.2/clang-22.0.2-x86_64-redhat-linux.tar.xz -O clang-22.tar.xz
+        # Pakai Neutron Clang yang stabil
+        wget https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/06092026/neutron-clang-06092026.tar.zst -O neutron-clang.tar.zst
         mkdir -p clang
-        tar -xf clang-22.tar.xz -C clang --strip-components=1
-        rm clang-22.tar.xz
+        tar -xf neutron-clang.tar.zst -C clang
+        rm neutron-clang.tar.zst
 
     - name: Build Kernel
       run: |
@@ -32,25 +32,20 @@ jobs:
         
         make O=out ARCH=arm64 vendor/xiaomi/miatoll_defconfig
         
-        # 1. Matikan fitur yang bikin error Clang (Shadow Call Stack)
+        # Matikan fitur yang bikin error Clang
         ./scripts/config --file out/.config -d CONFIG_SHADOW_CALL_STACK
         
-        # 2. "Bumbu" BPF untuk Android 17
+        # Paksa nyalakan BPF & Extreme (kalau ada)
         ./scripts/config --file out/.config \
           -e CONFIG_BPF_SYSCALL \
           -e CONFIG_BPF_JIT \
           -e CONFIG_CGROUP_BPF \
-          -e CONFIG_NET_CLS_BPF \
-          -e CONFIG_NET_ACT_BPF
-        
-        # 3. "Bumbu" Extreme (Walau kemungkinan gagal, kita paksa masuk)
-        ./scripts/config --file out/.config \
           -e CONFIG_ADRENO_IDLER \
           -e CONFIG_GPU_BOOST || true
         
         make O=out ARCH=arm64 olddefconfig
         
-        # 4. Build pakai Clang 22 (Paksa jadi Image.gz)
+        # Build dan PASTIKAN menghasilkan Image.gz
         make -j2 O=out ARCH=arm64 CC=clang \
           CLANG_TRIPLE=aarch64-linux-gnu- \
           LD=ld.lld \
@@ -67,5 +62,5 @@ jobs:
     - name: Upload Artifact (Image.gz)
       uses: actions/upload-artifact@v4
       with:
-        name: Kinesis-Image-gz-Clang22-Final
+        name: Kinesis-Extreme-Image-gz
         path: out/arch/arm64/boot/Image.gz
